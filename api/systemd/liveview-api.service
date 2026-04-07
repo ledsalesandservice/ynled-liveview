@@ -1,0 +1,15 @@
+[Unit]
+Description=YNLED LiveView REST API
+After=network.target
+
+[Service]
+Type=simple
+User=ynled
+WorkingDirectory=/opt/ynled/api
+EnvironmentFile=/opt/ynled/.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
