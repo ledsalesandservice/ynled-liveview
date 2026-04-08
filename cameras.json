@@ -1,0 +1,9 @@
+[
+  {
+    "_comment": "Replace CAMERA_IP with actual camera IP. Get IPs using Hikvision SADP Tool or router DHCP table.",
+    "id": "YNLED0001",
+    "name": "Camera 1",
+    "rtspUrl": "rtsp://admin:Landes66!@CAMERA_IP:554/Streaming/Channels/101",
+    "streamKey": "YNLED0001"
+  }
+]
