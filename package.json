@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
+    "localtunnel": "^2.0.2",
     "node-media-server": "^2.6.3"
   }
 }
