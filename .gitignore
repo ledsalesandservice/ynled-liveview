@@ -1,6 +1,10 @@
 node_modules/
 data/
-media/
+# Ignore generated HLS segments but keep the player page
+media/**/*.ts
+media/**/*.m3u8
+media/*/
 .env
 .env.local
 *.log
+ngrok

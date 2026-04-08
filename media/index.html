@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YNLED LiveView</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+    header {
+      background: #111;
+      border-bottom: 1px solid #222;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em; }
+    header .badge {
+      background: #16a34a;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .stats {
+      display: flex;
+      gap: 20px;
+      padding: 14px 20px;
+      background: #111;
+      border-bottom: 1px solid #1a1a1a;
+      font-size: 0.8rem;
+      color: #888;
+    }
+    .stat span { color: #fff; font-weight: 600; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+      gap: 2px;
+      padding: 2px;
+    }
+    .cam-card {
+      background: #111;
+      position: relative;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+    }
+    .cam-card video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .cam-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.8));
+      padding: 20px 10px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+    }
+    .cam-label .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #888;
+      flex-shrink: 0;
+    }
+    .cam-label .dot.live { background: #22c55e; animation: pulse 2s infinite; }
+    .cam-label .dot.loading { background: #eab308; }
+    .cam-label .dot.error { background: #ef4444; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .cam-label .cam-name { font-weight: 600; }
+    .cam-label .cam-status { color: #aaa; margin-left: auto; font-size: 0.72rem; }
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #444;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .no-cameras {
+      grid-column: 1/-1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      color: #444;
+      gap: 12px;
+      text-align: center;
+    }
+    .no-cameras h2 { font-size: 1.1rem; color: #666; }
+    .no-cameras code { background: #1a1a1a; padding: 2px 6px; border-radius: 4px; color: #888; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>YNLED LiveView</h1>
+  <span class="badge" id="live-badge">Loading...</span>
+</header>
+
+<div class="stats">
+  <div>Cameras: <span id="stat-total">–</span></div>
+  <div>Live: <span id="stat-live">–</span></div>
+  <div>Offline: <span id="stat-offline">–</span></div>
+  <div id="stat-time" style="margin-left:auto;"></div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+  const BASE = window.location.origin;
+  const API_STREAMS = BASE + '/api/streams';
+  const HLS_BASE = BASE + '/live';
+
+  const players = {};
+
+  function renderCard(streamKey, isLive, info) {
+    let card = document.getElementById('card-' + streamKey);
+
+    if (!isLive) {
+      if (card) {
+        card.querySelector('.dot').className = 'dot error';
+        card.querySelector('.cam-status').textContent = 'offline';
+        const video = card.querySelector('video');
+        if (video) video.style.display = 'none';
+        if (!card.querySelector('.placeholder')) {
+          const ph = document.createElement('div');
+          ph.className = 'placeholder';
+          ph.innerHTML = '<span style="font-size:2rem;opacity:0.2">&#9654;</span><span>Stream offline</span>';
+          card.insertBefore(ph, card.querySelector('.cam-label'));
+        }
+      }
+      return;
+    }
+
+    if (card) {
+      card.querySelector('.dot').className = 'dot live';
+      const fps = info && info.video ? info.video.fps + ' fps' : 'live';
+      card.querySelector('.cam-status').textContent = fps;
+      const ph = card.querySelector('.placeholder');
+      if (ph) ph.remove();
+      const video = card.querySelector('video');
+      if (video) video.style.display = 'block';
+      return;
+    }
+
+    card = document.createElement('div');
+    card.className = 'cam-card';
+    card.id = 'card-' + streamKey;
+    card.innerHTML =
+      '<video id="video-' + streamKey + '" playsinline muted autoplay></video>' +
+      '<div class="loading-overlay" id="loading-' + streamKey + '"><div class="spinner"></div></div>' +
+      '<div class="cam-label">' +
+        '<div class="dot loading"></div>' +
+        '<span class="cam-name">' + streamKey + '</span>' +
+        '<span class="cam-status">connecting\u2026</span>' +
+      '</div>';
+    document.getElementById('grid').appendChild(card);
+    initPlayer(streamKey);
+  }
+
+  function initPlayer(streamKey) {
+    const video = document.getElementById('video-' + streamKey);
+    const src = HLS_BASE + '/' + streamKey + '/index.m3u8';
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({ liveSyncDurationCount: 2, liveMaxLatencyDurationCount: 4, enableWorker: true });
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, function() {
+        video.play().catch(function(){});
+        hideLoading(streamKey, true);
+      });
+      hls.on(Hls.Events.ERROR, function(_, data) {
+        if (data.fatal) hideLoading(streamKey, false);
+      });
+      players[streamKey] = hls;
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = src;
+      video.addEventListener('loadedmetadata', function() {
+        video.play().catch(function(){});
+        hideLoading(streamKey, true);
+      });
+    }
+  }
+
+  function hideLoading(streamKey, success) {
+    const overlay = document.getElementById('loading-' + streamKey);
+    if (overlay) overlay.remove();
+    const card = document.getElementById('card-' + streamKey);
+    if (!card) return;
+    card.querySelector('.dot').className = success ? 'dot live' : 'dot error';
+    card.querySelector('.cam-status').textContent = success ? 'live' : 'error';
+  }
+
+  function refresh() {
+    fetch(API_STREAMS)
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        const liveStreams = data.live || {};
+        const liveKeys = Object.keys(liveStreams);
+
+        liveKeys.forEach(function(key) {
+          renderCard(key, true, liveStreams[key] && liveStreams[key].publisher);
+        });
+
+        document.querySelectorAll('.cam-card').forEach(function(c) {
+          const key = c.id.replace('card-', '');
+          if (liveKeys.indexOf(key) === -1) renderCard(key, false, null);
+        });
+
+        const total = document.querySelectorAll('.cam-card').length;
+        document.getElementById('stat-total').textContent = total;
+        document.getElementById('stat-live').textContent = liveKeys.length;
+        document.getElementById('stat-offline').textContent = total - liveKeys.length;
+        document.getElementById('stat-time').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+        const badge = document.getElementById('live-badge');
+        badge.textContent = liveKeys.length > 0 ? liveKeys.length + ' Live' : 'No streams';
+        badge.style.background = liveKeys.length > 0 ? '#16a34a' : '#6b7280';
+
+        if (total === 0) {
+          document.getElementById('grid').innerHTML =
+            '<div class="no-cameras">' +
+              '<h2>No cameras streaming</h2>' +
+              '<p>Start the relay: <code>npm start</code></p>' +
+            '</div>';
+        }
+      })
+      .catch(function() {
+        document.getElementById('live-badge').textContent = 'Server offline';
+        document.getElementById('live-badge').style.background = '#ef4444';
+      });
+  }
+
+  refresh();
+  setInterval(refresh, 10000);
+</script>
+
+</body>
+</html>
