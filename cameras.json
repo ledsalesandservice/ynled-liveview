@@ -1,9 +1,10 @@
 [
-  {
-    "_comment": "Replace CAMERA_IP with actual camera IP. Get IPs using Hikvision SADP Tool or router DHCP table.",
-    "id": "YNLED0001",
-    "name": "Camera 1",
-    "rtspUrl": "rtsp://admin:Landes66!@CAMERA_IP:554/Streaming/Channels/101",
-    "streamKey": "YNLED0001"
-  }
+  { "id": "YNLED0001", "name": "cam-01", "rtspUrl": "rtsp://admin:Landes66!@192.168.0.101:554/Streaming/Channels/101", "streamKey": "YNLED0001" },
+  { "id": "YNLED0002", "name": "cam-02", "rtspUrl": "rtsp://admin:Landes66!@192.168.0.102:554/Streaming/Channels/101", "streamKey": "YNLED0002" },
+  { "id": "YNLED0003", "name": "cam-03", "rtspUrl": "rtsp://admin:Landes66!@192.168.0.124:554/Streaming/Channels/101", "streamKey": "YNLED0003" },
+  { "id": "YNLED0004", "name": "cam-04", "rtspUrl": "rtsp://admin:Landes66!@192.168.0.127:554/Streaming/Channels/101", "streamKey": "YNLED0004" },
+  { "id": "YNLED0005", "name": "cam-05", "rtspUrl": "rtsp://admin:Landes66!@192.168.0.137:554/Streaming/Channels/101", "streamKey": "YNLED0005" },
+  { "id": "YNLED0006", "name": "cam-06", "rtspUrl": "rtsp://admin:Landes66!@192.168.0.154:554/Streaming/Channels/101", "streamKey": "YNLED0006" },
+  { "id": "YNLED0007", "name": "cam-07", "rtspUrl": "rtsp://admin:Landes66!@192.168.0.177:554/Streaming/Channels/101", "streamKey": "YNLED0007" },
+  { "id": "YNLED0008", "name": "cam-08", "rtspUrl": "rtsp://admin:Landes66!@192.168.0.197:554/Streaming/Channels/101", "streamKey": "YNLED0008" }
 ]

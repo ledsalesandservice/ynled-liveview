@@ -13,13 +13,23 @@ const MAX_RESTARTS = 10;
 const activeRelays = new Map(); // cameraId -> { proc, restarts, timer }
 
 function buildFfmpegArgs(rtspUrl, streamKey) {
+  // Hikvision cameras on this network output HEVC (H.265) at 2688x1520.
+  // Standard RTMP only supports H.264, so we must transcode.
+  // Scale to 1920x1080 to reduce CPU load; ultrafast preset keeps latency low.
   return [
     '-loglevel', 'warning',
     '-rtsp_transport', 'tcp',
     '-i', rtspUrl,
-    '-vcodec', 'copy',
+    '-vf', 'scale=1920:1080',
+    '-vcodec', 'libx264',
+    '-preset', 'ultrafast',
+    '-tune', 'zerolatency',
+    '-b:v', '2000k',
+    '-maxrate', '2500k',
+    '-bufsize', '4000k',
     '-acodec', 'aac',
     '-ar', '44100',
+    '-b:a', '128k',
     '-f', 'flv',
     `${RTMP_BASE}/${streamKey}`,
   ];
