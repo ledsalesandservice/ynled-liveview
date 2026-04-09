@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const VPS = process.env.NEXT_PUBLIC_API_URL;
+const VPS = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
 const TOKEN = process.env.API_TOKEN;
 
 export async function GET() {
