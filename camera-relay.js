@@ -8,17 +8,20 @@ const { spawn } = require('child_process');
 const { logEvent, setStatus } = require('./db');
 
 const RTMP_BASE = process.env.RTMP_BASE || 'rtmp://127.0.0.1:1935/live';
-const MAX_RESTARTS = 10;
+const MAX_RESTARTS = 999; // effectively unlimited — cameras can go offline temporarily
 
 const activeRelays = new Map(); // cameraId -> { proc, restarts, timer }
 
 function buildFfmpegArgs(rtspUrl, streamKey) {
-  // Hikvision cameras on this network output HEVC (H.265) at 2688x1520.
-  // Standard RTMP only supports H.264, so we must transcode.
-  // Scale to 1920x1080 to reduce CPU load; ultrafast preset keeps latency low.
+  // Hikvision cameras output HEVC (H.265) at 2688x1520 via UDP RTSP.
+  // NOTE: These cameras do NOT support interleaved TCP RTSP — use UDP (default).
+  // Standard RTMP requires H.264, so we transcode with ultrafast preset.
+  // -err_detect ignore_err + -fflags +discardcorrupt handle UDP packet loss
+  // gracefully instead of crashing the ffmpeg process.
   return [
     '-loglevel', 'warning',
-    '-rtsp_transport', 'tcp',
+    '-err_detect', 'ignore_err',
+    '-fflags', '+discardcorrupt',
     '-i', rtspUrl,
     '-vf', 'scale=1920:1080',
     '-vcodec', 'libx264',
